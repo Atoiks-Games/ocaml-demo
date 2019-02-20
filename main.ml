@@ -33,16 +33,11 @@ let is_right_key kc = kc = Sdl.K.d || kc = Sdl.K.right;;
 let my_update state_data =
     let evt = Sdl.Event.create () in
     if not (Sdl.poll_event (Some evt)) then
-        let has_key_up = state_data.has_key_up
-        and has_key_down = state_data.has_key_down
-        and has_key_left = state_data.has_key_left
-        and has_key_right = state_data.has_key_right in
         let dx = (if state_data.has_key_right then 0.25 else 0.0) +. (if state_data.has_key_left then -0.25 else 0.0)
         and dy = (if state_data.has_key_down then 0.25 else 0.0) +. (if state_data.has_key_up then -0.25 else 0.0) in
         Next {
-            player_x = state_data.player_x +. dx;
-            player_y = state_data.player_y +. dy;
-            has_key_up; has_key_down; has_key_left; has_key_right }
+            state_data with player_x = state_data.player_x +. dx;
+                            player_y = state_data.player_y +. dy; }
     else begin
         let evt_type = Sdl.Event.get evt Sdl.Event.typ in
         if evt_type = Sdl.Event.quit then
@@ -54,10 +49,7 @@ let my_update state_data =
             and has_key_down = state_data.has_key_down || is_down_key kc
             and has_key_left = state_data.has_key_left || is_left_key kc
             and has_key_right = state_data.has_key_right || is_right_key kc in
-            Next {
-                player_x = state_data.player_x;
-                player_y = state_data.player_y;
-                has_key_up; has_key_down; has_key_left; has_key_right }
+            Next { state_data with has_key_up; has_key_down; has_key_left; has_key_right }
         else if evt_type = Sdl.Event.key_up then
             (* don't care if the key is repeating *)
             let kc = Sdl.Event.get evt Sdl.Event.keyboard_keycode in
@@ -65,10 +57,7 @@ let my_update state_data =
             and has_key_down = not (not state_data.has_key_down || is_down_key kc)
             and has_key_left = not (not state_data.has_key_left || is_left_key kc)
             and has_key_right = not (not state_data.has_key_right || is_right_key kc) in
-            Next {
-                player_x = state_data.player_x;
-                player_y = state_data.player_y;
-                has_key_up; has_key_down; has_key_left; has_key_right }
+            Next { state_data with has_key_up; has_key_down; has_key_left; has_key_right }
         else
             (* you would handle some more events
             * (such as mouse clicks and stuff)
