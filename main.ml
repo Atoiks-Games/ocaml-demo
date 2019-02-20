@@ -3,8 +3,8 @@ open Result
 
 type game_state =
     | Next of {
-        player_x : int;
-        player_y : int;
+        player_x : float;
+        player_y : float;
         has_key_up : bool;
         has_key_down : bool;
         has_key_left : bool;
@@ -14,8 +14,8 @@ type game_state =
 
 let make_initial_state () =
     Next {
-        player_x = 0;
-        player_y = 0;
+        player_x = 0.0;
+        player_y = 0.0;
         has_key_up = false;
         has_key_down = false;
         has_key_left = false;
@@ -37,11 +37,11 @@ let my_update = function
             and has_key_down = state_data.has_key_down
             and has_key_left = state_data.has_key_left
             and has_key_right = state_data.has_key_right in
-            let dx = (if state_data.has_key_right then 1 else 0) + (if state_data.has_key_left then -1 else 0)
-            and dy = (if state_data.has_key_down then 1 else 0) + (if state_data.has_key_up then -1 else 0) in
+            let dx = (if state_data.has_key_right then 0.25 else 0.0) +. (if state_data.has_key_left then -0.25 else 0.0)
+            and dy = (if state_data.has_key_down then 0.25 else 0.0) +. (if state_data.has_key_up then -0.25 else 0.0) in
             Next {
-                player_x = state_data.player_x + dx;
-                player_y = state_data.player_y + dy;
+                player_x = state_data.player_x +. dx;
+                player_y = state_data.player_y +. dy;
                 has_key_up; has_key_down; has_key_left; has_key_right }
         else begin
             let evt_type = Sdl.Event.get evt Sdl.Event.typ in
@@ -87,7 +87,9 @@ let my_render renderer = function
 
         (* keeping the *terrible* gfx tradition, out player will just be a red box (for now) *)
         Sdl.set_render_draw_color renderer 0xFF 0x00 0x00 0xFF |> ignore;
-        Sdl.render_fill_rect renderer (Some (Sdl.Rect.create state_data.player_x state_data.player_y 20 20)) |> ignore;
+        let xpos = int_of_float state_data.player_x
+        and ypos = int_of_float state_data.player_y in
+        Sdl.render_fill_rect renderer (Some (Sdl.Rect.create xpos ypos 20 20)) |> ignore;
     end
 ;;
 
