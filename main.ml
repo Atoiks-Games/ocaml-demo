@@ -4,6 +4,7 @@ open Result
 type game_state = {
     player_x : float;
     player_y : float;
+    last_time_milli : Sdl.uint32;
     has_key_up : bool;
     has_key_down : bool;
     has_key_left : bool;
@@ -11,8 +12,9 @@ type game_state = {
 ;;
 
 let make_initial_state () = {
-    player_x = 0.0;
-    player_y = 0.0;
+    player_x = 0.;
+    player_y = 0.;
+    last_time_milli = 0l;
     has_key_up = false;
     has_key_down = false;
     has_key_left = false;
@@ -24,16 +26,32 @@ let is_down_key kc = kc = Sdl.K.s || kc = Sdl.K.down;;
 let is_left_key kc = kc = Sdl.K.a || kc = Sdl.K.left;;
 let is_right_key kc = kc = Sdl.K.d || kc = Sdl.K.right;;
 
+let calc_velocity_uvec state_data =
+    let ux = (if state_data.has_key_right then 1. else 0.) +. (if state_data.has_key_left then -1. else 0.)
+    and uy = (if state_data.has_key_down then 1. else 0.) +. (if state_data.has_key_up then -1. else 0.) in
+    if ux = 0. && uy = 0. then
+        (* handle this case separately otherwise divide by zero! *)
+        (0., 0.)
+    else
+        (* convert to unit vector by dividing by the magnitude/norm/length/... *)
+        let norm = sqrt (ux *. ux +. uy *. uy) in
+        (ux /. norm, uy /. norm)
+;;
+
 (* return None if you want to stop the game *)
-let my_update state_data =
+let rec my_update state_data =
     let evt = Sdl.Event.create () in
     if not (Sdl.poll_event (Some evt)) then
-        let dx = (if state_data.has_key_right then 0.25 else 0.0) +. (if state_data.has_key_left then -0.25 else 0.0)
-        and dy = (if state_data.has_key_down then 0.25 else 0.0) +. (if state_data.has_key_up then -0.25 else 0.0) in
+        let current_time_milli = Sdl.get_ticks () in
+        let delta_time_milli = Int32.sub current_time_milli state_data.last_time_milli in
+        let dt = Int32.to_float delta_time_milli /. 1000.
+        and (dx, dy) = calc_velocity_uvec state_data in
         Some {
-            state_data with player_x = state_data.player_x +. dx;
-                            player_y = state_data.player_y +. dy; }
+            state_data with player_x = state_data.player_x +. 150. *. dx *. dt;
+                            player_y = state_data.player_y +. 150. *. dy *. dt;
+                            last_time_milli = current_time_milli; }
     else begin
+        (* apart from the quit event handler, all others recursively call my_update *)
         let evt_type = Sdl.Event.get evt Sdl.Event.typ in
         if evt_type = Sdl.Event.quit then
             None
@@ -44,7 +62,7 @@ let my_update state_data =
             and has_key_down = state_data.has_key_down || is_down_key kc
             and has_key_left = state_data.has_key_left || is_left_key kc
             and has_key_right = state_data.has_key_right || is_right_key kc in
-            Some { state_data with has_key_up; has_key_down; has_key_left; has_key_right }
+            my_update { state_data with has_key_up; has_key_down; has_key_left; has_key_right; }
         else if evt_type = Sdl.Event.key_up then
             (* don't care if the key is repeating *)
             let kc = Sdl.Event.get evt Sdl.Event.keyboard_keycode in
@@ -52,12 +70,12 @@ let my_update state_data =
             and has_key_down = not (not state_data.has_key_down || is_down_key kc)
             and has_key_left = not (not state_data.has_key_left || is_left_key kc)
             and has_key_right = not (not state_data.has_key_right || is_right_key kc) in
-            Some { state_data with has_key_up; has_key_down; has_key_left; has_key_right }
+            my_update { state_data with has_key_up; has_key_down; has_key_left; has_key_right; }
         else
             (* you would handle some more events
             * (such as mouse clicks and stuff)
             * here! *)
-            Some state_data
+            my_update state_data
     end
 ;;
 
