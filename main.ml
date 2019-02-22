@@ -9,7 +9,6 @@ type game_state = {
     has_key_down : bool;
     has_key_left : bool;
     has_key_right : bool; }
-;;
 
 let make_initial_state () = {
     player_x = 0.;
@@ -19,12 +18,11 @@ let make_initial_state () = {
     has_key_down = false;
     has_key_left = false;
     has_key_right = false; }
-;;
 
-let is_up_key kc = kc = Sdl.K.w || kc = Sdl.K.up;;
-let is_down_key kc = kc = Sdl.K.s || kc = Sdl.K.down;;
-let is_left_key kc = kc = Sdl.K.a || kc = Sdl.K.left;;
-let is_right_key kc = kc = Sdl.K.d || kc = Sdl.K.right;;
+let is_up_key kc = kc = Sdl.K.w || kc = Sdl.K.up
+let is_down_key kc = kc = Sdl.K.s || kc = Sdl.K.down
+let is_left_key kc = kc = Sdl.K.a || kc = Sdl.K.left
+let is_right_key kc = kc = Sdl.K.d || kc = Sdl.K.right
 
 let calc_velocity_uvec state_data =
     let ux = (if state_data.has_key_right then 1. else 0.) +. (if state_data.has_key_left then -1. else 0.)
@@ -36,21 +34,11 @@ let calc_velocity_uvec state_data =
         (* convert to unit vector by dividing by the magnitude/norm/length/... *)
         let norm = sqrt (ux *. ux +. uy *. uy) in
         (ux /. norm, uy /. norm)
-;;
 
 (* return None if you want to stop the game *)
 let rec my_update state_data =
     let evt = Sdl.Event.create () in
-    if not (Sdl.poll_event (Some evt)) then
-        let current_time_milli = Sdl.get_ticks () in
-        let delta_time_milli = Int32.sub current_time_milli state_data.last_time_milli in
-        let dt = Int32.to_float delta_time_milli /. 1000.
-        and (dx, dy) = calc_velocity_uvec state_data in
-        Some {
-            state_data with player_x = state_data.player_x +. 150. *. dx *. dt;
-                            player_y = state_data.player_y +. 150. *. dy *. dt;
-                            last_time_milli = current_time_milli; }
-    else begin
+    if Sdl.poll_event (Some evt) then
         (* apart from the quit event handler, all others recursively call my_update *)
         let evt_type = Sdl.Event.get evt Sdl.Event.typ in
         if evt_type = Sdl.Event.quit then
@@ -76,8 +64,15 @@ let rec my_update state_data =
             * (such as mouse clicks and stuff)
             * here! *)
             my_update state_data
-    end
-;;
+    else
+        let current_time_milli = Sdl.get_ticks () in
+        let delta_time_milli = Int32.sub current_time_milli state_data.last_time_milli in
+        let dt = Int32.to_float delta_time_milli /. 1000.
+        and (dx, dy) = calc_velocity_uvec state_data in
+        Some {
+            state_data with player_x = state_data.player_x +. 150. *. dx *. dt;
+                            player_y = state_data.player_y +. 150. *. dy *. dt;
+                            last_time_milli = current_time_milli; }
 
 (* renders stuff *)
 let my_render renderer state_data =
@@ -88,8 +83,7 @@ let my_render renderer state_data =
     Sdl.set_render_draw_color renderer 0xFF 0x00 0x00 0xFF |> ignore;
     let xpos = int_of_float state_data.player_x
     and ypos = int_of_float state_data.player_y in
-    Sdl.render_fill_rect renderer (Some (Sdl.Rect.create xpos ypos 20 20)) |> ignore;
-;;
+    Sdl.render_fill_rect renderer (Some (Sdl.Rect.create xpos ypos 20 20)) |> ignore
 
 (* this does my_update -> my_render -> blit to renderer -> ... *)
 let game_loop renderer =
@@ -103,11 +97,13 @@ let game_loop renderer =
             inner_loop datum) in
     (* start the inner loop with inital game state *)
     inner_loop (make_initial_state ())
-;;
 
+(* follow C's footsteps, return 0 is success, everything else is failure! *)
 let main () =
     match Sdl.init Sdl.Init.video with
-    | Error (`Msg e) -> Sdl.log "Init error: %s" e;
+    | Error (`Msg e) ->
+        Sdl.log "Init error: %s" e;
+        1
     | Ok () ->
         (match Sdl.create_window ~w:640 ~h:480 "OCaml Demo" Sdl.Window.opengl with
         | Error (`Msg e) -> Sdl.log "Create window error: %s" e
@@ -119,10 +115,10 @@ let main () =
                 game_loop renderer;
                 Sdl.destroy_renderer renderer);
             Sdl.destroy_window window);
-        Sdl.quit ()
-;;
+        Sdl.quit ();
+        0
 
-let () = main ()
+let () = exit (main ())
 
 (*
 > ocamlfind ocamlc -package tsdl -linkpkg -o main.byte main.ml
