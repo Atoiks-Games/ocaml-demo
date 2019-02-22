@@ -94,33 +94,32 @@ let my_render renderer state_data =
 (* this does my_update -> my_render -> blit to renderer -> ... *)
 let game_loop renderer =
     let rec inner_loop state =
-        let next_state = my_update state in
-        match next_state with
+        (match my_update state with
         | None -> ()
-        | Some datum -> begin
+        | Some datum ->
             (* only do rendering and continue loop if we are continuing *)
             my_render renderer datum;
             Sdl.render_present renderer;
-            inner_loop datum;
-        end in
+            inner_loop datum) in
     (* start the inner loop with inital game state *)
     inner_loop (make_initial_state ())
 ;;
 
-let main () = match Sdl.init Sdl.Init.video with
-| Error (`Msg e) -> Sdl.log "Init error: %s" e; exit 1
-| Ok () ->
-    match Sdl.create_window ~w:640 ~h:480 "SDL OpenGL" Sdl.Window.opengl with
-    | Error (`Msg e) -> Sdl.log "Create window error: %s" e; exit 1
-    | Ok w ->
-        (* need to acquire a renderer context then we can contine from there *)
-        match Sdl.create_renderer ~flags:Sdl.Renderer.accelerated w with
-        | Error (`Msg e) -> Sdl.log "Create window error: %s" e; exit 1
-        | Ok renderer -> game_loop renderer;
-        Sdl.destroy_renderer renderer;
-        Sdl.destroy_window w;
-        Sdl.quit ();
-        exit 0
+let main () =
+    match Sdl.init Sdl.Init.video with
+    | Error (`Msg e) -> Sdl.log "Init error: %s" e;
+    | Ok () ->
+        (match Sdl.create_window ~w:640 ~h:480 "OCaml Demo" Sdl.Window.opengl with
+        | Error (`Msg e) -> Sdl.log "Create window error: %s" e
+        | Ok window ->
+            (* need to acquire a renderer context then we can contine from there *)
+            (match Sdl.create_renderer ~flags:Sdl.Renderer.accelerated window with
+            | Error (`Msg e) -> Sdl.log "Create renderer error: %s" e
+            | Ok renderer ->
+                game_loop renderer;
+                Sdl.destroy_renderer renderer);
+            Sdl.destroy_window window);
+        Sdl.quit ()
 ;;
 
 let () = main ()
