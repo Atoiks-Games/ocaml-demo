@@ -24,16 +24,21 @@ let is_down_key kc = kc = Sdl.K.s || kc = Sdl.K.down
 let is_left_key kc = kc = Sdl.K.a || kc = Sdl.K.left
 let is_right_key kc = kc = Sdl.K.d || kc = Sdl.K.right
 
-let calc_velocity_uvec state_data =
-    let ux = (if state_data.has_key_right then 1. else 0.) +. (if state_data.has_key_left then -1. else 0.)
-    and uy = (if state_data.has_key_down then 1. else 0.) +. (if state_data.has_key_up then -1. else 0.) in
-    if ux = 0. && uy = 0. then
-        (* handle this case separately otherwise divide by zero! *)
+(* converts a vector into a unit vector, if was zero vector, do nothing *)
+let normalize_vec vx vy =
+    if vx = 0. && vy = 0. then
         (0., 0.)
     else
-        (* convert to unit vector by dividing by the magnitude/norm/length/... *)
-        let norm = sqrt (ux *. ux +. uy *. uy) in
-        (ux /. norm, uy /. norm)
+        let norm = sqrt (vx *. vx +. vy *. vy) in
+        (vx /. norm, vy /. norm)
+
+let calc_velocity_uvec state_data =
+    let lmr_sum left neutral right op bool_left bool_right =
+        op (if bool_left then left else neutral) (if bool_right then right else neutral) in
+    let raw_velocity = lmr_sum (-1.) (0.) (1.) (+.) in
+    let x = raw_velocity state_data.has_key_left state_data.has_key_right in
+    let y = raw_velocity state_data.has_key_up state_data.has_key_down in
+    normalize_vec x y
 
 (* return None if you want to stop the game *)
 let rec my_update state_data =
@@ -46,18 +51,18 @@ let rec my_update state_data =
         else if evt_type = Sdl.Event.key_down then
             (* don't care if the key is repeating *)
             let kc = Sdl.Event.get evt Sdl.Event.keyboard_keycode in
-            let has_key_up = state_data.has_key_up || is_up_key kc
-            and has_key_down = state_data.has_key_down || is_down_key kc
-            and has_key_left = state_data.has_key_left || is_left_key kc
-            and has_key_right = state_data.has_key_right || is_right_key kc in
+            let has_key_up = state_data.has_key_up || is_up_key kc in
+            let has_key_down = state_data.has_key_down || is_down_key kc in
+            let has_key_left = state_data.has_key_left || is_left_key kc in
+            let has_key_right = state_data.has_key_right || is_right_key kc in
             my_update { state_data with has_key_up; has_key_down; has_key_left; has_key_right; }
         else if evt_type = Sdl.Event.key_up then
             (* don't care if the key is repeating *)
             let kc = Sdl.Event.get evt Sdl.Event.keyboard_keycode in
-            let has_key_up = not (not state_data.has_key_up || is_up_key kc)
-            and has_key_down = not (not state_data.has_key_down || is_down_key kc)
-            and has_key_left = not (not state_data.has_key_left || is_left_key kc)
-            and has_key_right = not (not state_data.has_key_right || is_right_key kc) in
+            let has_key_up = not (not state_data.has_key_up || is_up_key kc) in
+            let has_key_down = not (not state_data.has_key_down || is_down_key kc) in
+            let has_key_left = not (not state_data.has_key_left || is_left_key kc) in
+            let has_key_right = not (not state_data.has_key_right || is_right_key kc) in
             my_update { state_data with has_key_up; has_key_down; has_key_left; has_key_right; }
         else
             (* you would handle some more events
@@ -67,8 +72,8 @@ let rec my_update state_data =
     else
         let current_time_milli = Sdl.get_ticks () in
         let delta_time_milli = Int32.sub current_time_milli state_data.last_time_milli in
-        let dt = Int32.to_float delta_time_milli /. 1000.
-        and (dx, dy) = calc_velocity_uvec state_data in
+        let dt = Int32.to_float delta_time_milli /. 1000. in
+        let (dx, dy) = calc_velocity_uvec state_data in
         Some {
             state_data with player_x = state_data.player_x +. 150. *. dx *. dt;
                             player_y = state_data.player_y +. 150. *. dy *. dt;
@@ -81,8 +86,8 @@ let my_render renderer state_data =
 
     (* keeping the *terrible* gfx tradition, out player will just be a red box (for now) *)
     Sdl.set_render_draw_color renderer 0xFF 0x00 0x00 0xFF |> ignore;
-    let xpos = int_of_float state_data.player_x
-    and ypos = int_of_float state_data.player_y in
+    let xpos = int_of_float state_data.player_x in
+    let ypos = int_of_float state_data.player_y in
     Sdl.render_fill_rect renderer (Some (Sdl.Rect.create xpos ypos 20 20)) |> ignore
 
 (* this does my_update -> my_render -> blit to renderer -> ... *)
